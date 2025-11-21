@@ -43,7 +43,7 @@
       </div>
     </section>
 
-    <!-- Visualizations (images from Blob SAS) -->
+    <!-- Visualizations -->
     <section>
       <h2 class="text-2xl font-semibold mb-4">Explore Nutritional Insights</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -84,7 +84,7 @@
       </p>
     </section>
 
-    <!-- Table from average_macros_by_diet.csv -->
+    <!-- Table from CSV -->
     <section>
       <h2 class="text-2xl font-semibold mb-4">
         Average Macros by Diet (from CSV)
@@ -102,7 +102,7 @@
       </div>
     </section>
 
-    <!-- (Optional) Pagination stub -->
+    <!-- Pagination stub -->
     <section>
       <h2 class="text-2xl font-semibold mb-4">Pagination</h2>
       <div class="flex justify-center gap-2 mt-4">
@@ -128,18 +128,16 @@
     const AVERAGE_MACROS_CSV =
       "https://dietanalysisstorageacc.blob.core.windows.net/outputs/average_macros_by_diet.csv?sp=r&st=2025-11-21T19:28:10Z&se=2025-11-25T03:43:10Z&spr=https&sv=2024-11-04&sr=b&sig=l%2FbOXR%2F%2BqjVgnxw0Z4AvZx26agJMSBeVpB2egJTCMs8%3D";
 
-
     const SAS = {
-  "avg_macros_bar_chart.png":
-    "https://dietanalysisstorageacc.blob.core.windows.net/outputs/avg_macros_bar_chart.png?sp=r&st=2025-11-21T19:26:49Z&se=2025-11-25T03:41:49Z&spr=https&sv=2024-11-04&sr=b&sig=BGy8ZFSCLDs0TIYhY8UHhE0eMctpt2wwI%2FG5R8kGPDQ%3D",
+      "avg_macros_bar_chart.png":
+        "https://dietanalysisstorageacc.blob.core.windows.net/outputs/avg_macros_bar_chart.png?sp=r&st=2025-11-21T19:26:49Z&se=2025-11-25T03:41:49Z&spr=https&sv=2024-11-04&sr=b&sig=BGy8ZFSCLDs0TIYhY8UHhE0eMctpt2wwI%2FG5R8kGPDQ%3D",
 
-  "top5_protein_scatter.png":
-    "https://dietanalysisstorageacc.blob.core.windows.net/outputs/top5_protein_scatter.png?sp=r&st=2025-11-21T19:27:44Z&se=2025-11-25T03:42:44Z&spr=https&sv=2024-11-04&sr=b&sig=WJdxDo4%2BM9g5DEnxhwhc0EfE1V2u0TNzgWNxacgZToU%3D",
+      "top5_protein_scatter.png":
+        "https://dietanalysisstorageacc.blob.core.windows.net/outputs/top5_protein_scatter.png?sp=r&st=2025-11-21T19:27:44Z&se=2025-11-25T03:42:44Z&spr=https&sv=2024-11-04&sr=b&sig=WJdxDo4%2BM9g5DEnxhwhc0EfE1V2u0TNzgWNxacgZToU%3D",
 
-  "macronutrient_heatmap.png":
-    "https://dietanalysisstorageacc.blob.core.windows.net/outputs/macronutrient_heatmap.png?sp=r&st=2025-11-21T19:27:24Z&se=2025-11-25T03:42:24Z&spr=https&sv=2024-11-04&sr=b&sig=Fphu5LFctHaONWys8ofhuPlhezgIq95qdfpVUEidxwo%3D"
-};
-
+      "macronutrient_heatmap.png":
+        "https://dietanalysisstorageacc.blob.core.windows.net/outputs/macronutrient_heatmap.png?sp=r&st=2025-11-21T19:27:24Z&se=2025-11-25T03:42:24Z&spr=https&sv=2024-11-04&sr=b&sig=Fphu5LFctHaONWys8ofhuPlhezgIq95qdfpVUEidxwo%3D"
+    };
 
     const $btn = document.getElementById("getInsights");
     const $meta = document.getElementById("meta");
@@ -155,6 +153,17 @@
       $btn.textContent = on ? "Loading…" : "Get Nutritional Insights";
     }
 
+    // Extract file name from "outputs/x.png" OR full URL OR plain "x.png"
+    function getFileKey(pathOrUrl) {
+      if (!pathOrUrl) return "";
+      try {
+        const noQuery = pathOrUrl.split("?")[0];
+        return noQuery.split("/").pop();
+      } catch {
+        return pathOrUrl;
+      }
+    }
+
     async function loadAvgMacrosTable(filterDiet, search) {
       if (!AVERAGE_MACROS_CSV) return;
 
@@ -168,7 +177,6 @@
       const headerLine = lines[0];
       const headers = headerLine.split(",");
 
-      // Build header row once
       $avgHead.innerHTML = "";
       const trHead = document.createElement("tr");
       headers.forEach((h) => {
@@ -179,7 +187,6 @@
       });
       $avgHead.appendChild(trHead);
 
-      // Build body rows with filtering
       $avgBody.innerHTML = "";
       const normDiet = (filterDiet || "").toLowerCase();
       const normSearch = (search || "").toLowerCase();
@@ -204,7 +211,7 @@
         });
         $avgBody.appendChild(tr);
 
-        if (++count >= 20) break; 
+        if (++count >= 20) break;
       }
 
       if (count === 0) {
@@ -243,11 +250,14 @@
         const heat = files.find((n) => n.includes("macronutrient_heatmap"));
         const scat = files.find((n) => n.includes("top5_protein_scatter"));
 
-        $imgBar.src = SAS[bar] || "";
-        $imgHeatmap.src = SAS[heat] || "";
-        $imgScatter.src = SAS[scat] || "";
+        const barKey  = getFileKey(bar);
+        const heatKey = getFileKey(heat);
+        const scatKey = getFileKey(scat);
 
-        // Load and filter CSV table on the frontend
+        $imgBar.src     = (barKey  && SAS[barKey])  || SAS["avg_macros_bar_chart.png"] || "";
+        $imgHeatmap.src = (heatKey && SAS[heatKey]) || SAS["macronutrient_heatmap.png"] || "";
+        $imgScatter.src = (scatKey && SAS[scatKey]) || SAS["top5_protein_scatter.png"] || "";
+
         await loadAvgMacrosTable(diet, search);
       } catch (e) {
         alert("Failed to load insights: " + e.message);
@@ -261,5 +271,3 @@
   </script>
 </body>
 </html>
-
-

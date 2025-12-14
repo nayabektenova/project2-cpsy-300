@@ -10,6 +10,126 @@
   >
 </head>
 <body class="bg-gray-100">
+
+  <!-- Auth / Login section (shown when user is NOT logged in) -->
+  <section
+    id="auth-section"
+    class="min-h-screen flex items-center justify-center bg-gray-100"
+  >
+    <div class="bg-white shadow-lg rounded-lg p-8 w-full max-w-2xl space-y-6">
+      <h1 class="text-2xl font-semibold text-center text-gray-800">
+        Nutritional Insights – Login / Register
+      </h1>
+
+      <!-- LOGIN FORM -->
+      <form id="login-form" class="space-y-3">
+        <h2 class="text-xl font-semibold text-gray-800">Login</h2>
+
+        <div class="flex flex-col space-y-1">
+          <label for="login-email" class="text-sm text-gray-700">Email</label>
+          <input
+            id="login-email"
+            type="email"
+            required
+            class="border rounded px-3 py-2 focus:outline-none focus:ring w-full"
+          />
+        </div>
+
+        <div class="flex flex-col space-y-1">
+          <label for="login-password" class="text-sm text-gray-700">Password</label>
+          <input
+            id="login-password"
+            type="password"
+            required
+            class="border rounded px-3 py-2 focus:outline-none focus:ring w-full"
+          />
+        </div>
+
+        <p id="login-error" class="text-sm text-red-600"></p>
+
+        <button
+          type="submit"
+          class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+        >
+          Login
+        </button>
+      </form>
+
+      <hr class="border-gray-200" />
+
+      <!-- REGISTER FORM -->
+      <form id="register-form" class="space-y-3">
+        <h2 class="text-xl font-semibold text-gray-800">Register</h2>
+
+        <div class="flex flex-col space-y-1">
+          <label for="register-name" class="text-sm text-gray-700">Name</label>
+          <input
+            id="register-name"
+            type="text"
+            required
+            class="border rounded px-3 py-2 focus:outline-none focus:ring w-full"
+          />
+        </div>
+
+        <div class="flex flex-col space-y-1">
+          <label for="register-email" class="text-sm text-gray-700">Email</label>
+          <input
+            id="register-email"
+            type="email"
+            required
+            class="border rounded px-3 py-2 focus:outline-none focus:ring w-full"
+          />
+        </div>
+
+        <div class="flex flex-col space-y-1">
+          <label for="register-password" class="text-sm text-gray-700">Password</label>
+          <input
+            id="register-password"
+            type="password"
+            required
+            class="border rounded px-3 py-2 focus:outline-none focus:ring w-full"
+          />
+        </div>
+
+        <p id="register-error" class="text-sm text-red-600"></p>
+
+        <button
+          type="submit"
+          class="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
+        >
+          Register
+        </button>
+      </form>
+
+      <hr class="border-gray-200" />
+
+      <button
+        id="google-login"
+        type="button"
+        class="w-full bg-red-600 text-white py-2 rounded hover:bg-red-700"
+      >
+        Continue with Google
+      </button>
+      <p class="text-xs text-gray-500 text-center">
+        You’ll be redirected to Google to sign in.
+      </p>
+    </div>
+  </section>
+
+  <!-- User info shown in the top-right when logged in -->
+  <div
+    id="user-info"
+    class="hidden fixed top-4 right-4 flex items-center space-x-3 bg-white shadow rounded-full px-4 py-2"
+  >
+    <span id="user-name-display" class="text-sm font-medium text-gray-800"></span>
+    <button
+      id="logout-button"
+      class="text-xs text-red-600 hover:underline"
+    >
+      Logout
+    </button>
+  </div>
+
   <header class="bg-blue-600 p-4 text-white">
     <h1 class="text-3xl font-semibold">Nutritional Insights</h1>
   </header>
@@ -123,6 +243,198 @@
   </footer>
 
   <script>
+    // === AUTH CONFIG ===
+    const AUTH_API_BASE =
+      window.location.hostname === "localhost"
+        ? "http://localhost:7071/api"
+        : "https://diet-analysis-func-app-bgdahfgmewcce4d4.eastus2-01.azurewebsites.net/api";
+
+    function readHashParams() {
+      const raw = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "";
+      return new URLSearchParams(raw);
+    }
+
+    function clearHash() {
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
+
+    function saveAuth(token, user) {
+      localStorage.setItem("authToken", token);
+      localStorage.setItem("authUserName", user?.name || "");
+      localStorage.setItem("authUserEmail", user?.email || "");
+    }
+
+    function clearAuth() {
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("authUserName");
+      localStorage.removeItem("authUserEmail");
+    }
+
+    async function handleOAuthReturnIfAny() {
+      const params = readHashParams();
+      const token = params.get("token");
+      if (!token) return false;
+
+      const name = params.get("name") || "";
+      const email = params.get("email") || "";
+      saveAuth(token, { name, email });
+
+      clearHash();
+      return true;
+    }
+
+    const authSection = document.getElementById("auth-section");
+    const userInfo = document.getElementById("user-info");
+    const userNameDisplay = document.getElementById("user-name-display");
+    const logoutButton = document.getElementById("logout-button");
+
+    const loginForm = document.getElementById("login-form");
+    const registerForm = document.getElementById("register-form");
+    const loginError = document.getElementById("login-error");
+    const registerError = document.getElementById("register-error");
+
+    const dashHeader = document.querySelector("header");
+    const dashMain = document.querySelector("main");
+    const dashFooter = document.querySelector("footer");
+
+    function showAuth() {
+      if (authSection) authSection.style.display = "flex";
+      if (userInfo) userInfo.classList.add("hidden");
+      if (dashHeader) dashHeader.style.display = "none";
+      if (dashMain) dashMain.style.display = "none";
+      if (dashFooter) dashFooter.style.display = "none";
+    }
+
+    function showDashboard(name) {
+      if (authSection) authSection.style.display = "none";
+      if (userInfo) userInfo.classList.remove("hidden");
+      if (dashHeader) dashHeader.style.display = "";
+      if (dashMain) dashMain.style.display = "";
+      if (dashFooter) dashFooter.style.display = "";
+      if (userNameDisplay) userNameDisplay.textContent = name ? `Hello, ${name}` : "";
+    }
+
+    async function initAuth() {
+      // If we came back from Google OAuth, parse the token from URL hash
+      await handleOAuthReturnIfAny();
+
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        showAuth();
+        return;
+      }
+
+      // Validate token using backend
+      try {
+        const res = await fetch(`${AUTH_API_BASE}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!res.ok) throw new Error("Token invalid");
+
+        const data = await res.json(); // expected { user: { name, email, ... } }
+        saveAuth(token, data.user);
+        showDashboard(data.user?.name || "");
+
+        // Load dashboard data ONLY after authenticated
+        if (window.loadInsights) window.loadInsights();
+      } catch (e) {
+        clearAuth();
+        showAuth();
+      }
+    }
+
+    // Google OAuth start
+    const googleBtn = document.getElementById("google-login");
+    if (googleBtn) {
+      googleBtn.addEventListener("click", () => {
+        window.location.href = `${AUTH_API_BASE}/auth/google/start`;
+      });
+    }
+
+    // REGISTER
+    if (registerForm) {
+      registerForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        registerError.textContent = "";
+
+        const name = document.getElementById("register-name").value.trim();
+        const email = document.getElementById("register-email").value.trim();
+        const password = document.getElementById("register-password").value;
+
+        try {
+          const res = await fetch(`${AUTH_API_BASE}/auth/register`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, email, password }),
+          });
+
+          const data = await res.json();
+
+          if (!res.ok) {
+            registerError.textContent = data.error || "Registration failed.";
+            return;
+          }
+
+          saveAuth(data.token, data.user);
+          showDashboard(data.user?.name || "");
+
+          // Load after register
+          if (window.loadInsights) window.loadInsights();
+        } catch (err) {
+          console.error(err);
+          registerError.textContent = "Network error. Please try again.";
+        }
+      });
+    }
+
+    // LOGIN
+    if (loginForm) {
+      loginForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        loginError.textContent = "";
+
+        const email = document.getElementById("login-email").value.trim();
+        const password = document.getElementById("login-password").value;
+
+        try {
+          const res = await fetch(`${AUTH_API_BASE}/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
+          });
+
+          const data = await res.json();
+
+          if (!res.ok) {
+            loginError.textContent = data.error || "Login failed.";
+            return;
+          }
+
+          saveAuth(data.token, data.user);
+          showDashboard(data.user?.name || "");
+
+          // Load after login
+          if (window.loadInsights) window.loadInsights();
+        } catch (err) {
+          console.error(err);
+          loginError.textContent = "Network error. Please try again.";
+        }
+      });
+    }
+
+    // LOGOUT
+    if (logoutButton) {
+      logoutButton.addEventListener("click", () => {
+        clearAuth();
+        showAuth();
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", initAuth);
+  </script>
+
+  <script>
     const API_URL = "https://diet-analysis-func-app-bgdahfgmewcce4d4.eastus2-01.azurewebsites.net/api/function_app?code=e9p2Pqa2_wIYS5FLPYYRL8dTLfnw9k0LgmlMMzxAK_SJAzFu8lhXDA==";
 
     const AVERAGE_MACROS_CSV =
@@ -153,7 +465,6 @@
       $btn.textContent = on ? "Loading…" : "Get Nutritional Insights";
     }
 
-    // Extract file name from "outputs/x.png" OR full URL OR plain "x.png"
     function getFileKey(pathOrUrl) {
       if (!pathOrUrl) return "";
       try {
@@ -174,8 +485,7 @@
       const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
       if (lines.length < 2) return;
 
-      const headerLine = lines[0];
-      const headers = headerLine.split(",");
+      const headers = lines[0].split(",");
 
       $avgHead.innerHTML = "";
       const trHead = document.createElement("tr");
@@ -236,8 +546,13 @@
         if (diet) url.searchParams.set("diet", diet);
         if (search) url.searchParams.set("filter", search);
 
+        const token = localStorage.getItem("authToken");
+
         const t0 = performance.now();
-        const res = await fetch(url.toString(), { mode: "cors" });
+        const res = await fetch(url.toString(), {
+          mode: "cors",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         const elapsed = performance.now() - t0;
@@ -266,9 +581,11 @@
       }
     }
 
-    window.addEventListener("DOMContentLoaded", load);
+    // IMPORTANT: do NOT auto-load on DOMContentLoaded anymore.
+    // Only load after auth success.
+    window.loadInsights = load;
+
     $btn.addEventListener("click", load);
   </script>
 </body>
 </html>
-

@@ -277,11 +277,19 @@
 
       const name = params.get("name") || "";
       const email = params.get("email") || "";
+
       saveAuth(token, { name, email });
 
+      showDashboard(name);
+
+      if (window.loadInsights) window.loadInsights();
+
       clearHash();
+      window.scrollTo({ top: 0, behavior: "instant" });
+
       return true;
     }
+
 
     const authSection = document.getElementById("auth-section");
     const userInfo = document.getElementById("user-info");
@@ -303,6 +311,7 @@
       if (dashHeader) dashHeader.style.display = "none";
       if (dashMain) dashMain.style.display = "none";
       if (dashFooter) dashFooter.style.display = "none";
+      window.scrollTo({ top: 0, behavior: "instant" });
     }
 
     function showDashboard(name) {
@@ -377,7 +386,9 @@
           }
 
           saveAuth(data.token, data.user);
-          showDashboard(data.user?.name || "");
+          showDashboard(data.user.name);
+          window.scrollTo({ top: 0, behavior: "instant" });
+          if (window.loadInsights) window.loadInsights();
 
           // Load after register
           if (window.loadInsights) window.loadInsights();

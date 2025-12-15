@@ -1,3 +1,33 @@
-venv/
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
 .python_packages
-__pycache__
+
+# Virtual environment
+.env/
+.venv/
+venv/
+ENV/
+env/
+
+# Azure Functions artifacts
+.local/
+bin/
+obj/
+
+# Azure Functions extensions
+extensions.csproj
+extensions/
+
+# VS Code settings
+.vscode/
+
+# MacOS
+.DS_Store
+
+# Log files
+*.log
+
+# OS generated files
+*.swp

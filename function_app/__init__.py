@@ -4,6 +4,7 @@ import os
 import pandas as pd
 import json
 import time
+import io
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     try:
@@ -18,9 +19,10 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         blob_service = BlobServiceClient.from_connection_string(conn)
         container = blob_service.get_container_client("outputs")
 
-        # Read cached processed CSV
+        # Read cached processed CSV (blob.readall() returns bytes; wrap in BytesIO for pandas)
         blob = container.download_blob("processed_data_with_metrics.csv")
-        df = pd.read_csv(blob.readall())
+        raw = blob.readall()
+        df = pd.read_csv(io.BytesIO(raw))
 
         # Filtering (vectorized — fast)
         if diet:

@@ -20,6 +20,9 @@ obj/
 extensions.csproj
 extensions/
 
+# Azure Functions local settings
+local.settings.json
+
 # VS Code settings
 .vscode/
 

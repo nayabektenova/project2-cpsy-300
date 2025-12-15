@@ -3,59 +3,60 @@ from azure.storage.blob import BlobServiceClient
 import os
 import pandas as pd
 import json
-import math
+import time
 
-# UPDATED FUNCTION: HTTP Function reads cached data rather than running the entire calculation again.
 def main(req: func.HttpRequest) -> func.HttpResponse:
     try:
-        # Query params
-        diet = req.params.get("diet")
-        keyword = req.params.get("q")
-        page = int(req.params.get("page", 1))
-        page_size = int(req.params.get("pageSize", 20))
+        start = time.time()
 
-        # Connect to storage
+        # Query params (MATCH HTML)
+        diet = req.params.get("diet")
+        keyword = req.params.get("filter")
+
+        # Blob connection
         conn = os.environ["AzureWebJobsStorage"]
         blob_service = BlobServiceClient.from_connection_string(conn)
-
         container = blob_service.get_container_client("outputs")
-        blob = container.download_blob("processed_data_with_metrics.csv")
-        df = pd.read_csv(blob)
 
-        # ---- Filtering ----
+        # Read cached processed CSV
+        blob = container.download_blob("processed_data_with_metrics.csv")
+        df = pd.read_csv(blob.readall())
+
+        # Filtering (vectorized — fast)
         if diet:
-            df = df[df["Diet_type"] == diet]
+            df = df[df["Diet_type"].str.lower() == diet.lower()]
 
         if keyword:
+            keyword = keyword.lower()
             df = df[df.apply(
-                lambda row: keyword.lower() in row.astype(str).str.lower().to_string(),
+                lambda row: keyword in " ".join(row.astype(str)).lower(),
                 axis=1
             )]
 
-        # ---- Pagination ----
-        total_rows = len(df)
-        total_pages = math.ceil(total_rows / page_size)
-        start = (page - 1) * page_size
-        end = start + page_size
-
-        paged_df = df.iloc[start:end]
+        elapsed_ms = int((time.time() - start) * 1000)
 
         response = {
-            "page": page,
-            "pageSize": page_size,
-            "totalPages": total_pages,
-            "totalRows": total_rows,
-            "data": paged_df.to_dict(orient="records")
+            "rows_processed": len(df),
+            "processing_time_ms": elapsed_ms,
+            "uploaded_files": [
+                "avg_macros_bar_chart.png",
+                "macronutrient_heatmap.png",
+                "top5_protein_scatter.png"
+            ]
         }
 
         return func.HttpResponse(
             json.dumps(response),
+            status_code=200,
             mimetype="application/json",
-            status_code=200
+            headers={
+                "Access-Control-Allow-Origin": "*"
+            }
         )
 
     except Exception as e:
         return func.HttpResponse(
-            f"Error: {str(e)}",
-            status_code=500
+            json.dumps({"error": str(e)}),
+            status_code=500,
+            mimetype="application/json"
         )
